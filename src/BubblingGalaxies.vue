@@ -91,60 +91,6 @@
         id="wwt-overlay"
       >
         <div id="top-content">
-          <!-- old left-buttons / right-buttons layout preserved below -->
-          <!-- <div id="left-buttons">
-            <icon-button
-              v-model="showInfoSheet"
-              icon="mdi-information-variant"
-              :color="buttonColor"
-              :tooltip-text="showInfoSheet ? 'Hide app info' : 'About this app'"
-              tooltip-location="start"
-            >
-            </icon-button>
-            <v-btn
-              v-if="!showImageCard"
-              class="blur-button"
-              variant="outlined"
-              density="compact"
-              @click="showInfoSheet = !showInfoSheet"
-            >
-              About
-            </v-btn>
-            <icon-button
-              v-if="!showImageCard"
-              icon="mdi-home"
-              :color="buttonColor"
-              tooltip-text="Reset view"
-              @activate="goToCoordinates('m74')"
-            />
-            <icon-button
-              v-if="!showImageCard"
-              :icon="isWWT3D ? 'mdi-video-2d' : 'mdi-video-3d'"
-              :color="buttonColor"
-              @activate="isWWT3D = !isWWT3D"
-            />
-          </div>
-          <div id="right-buttons">
-            <v-btn
-              v-hide="!showSimulation"
-              class="blur-button"
-              density="compact"
-              @click="showModel = !showModel"
-            >
-              View in 3D!
-            </v-btn>
-            <icon-button
-              v-if="!showImageCard"
-              :color="buttonColor"
-              tooltip-text="Show Simulation in Split Screen"
-              @activate="showImageCard = !showImageCard"
-            >
-              <template #button>
-                <SplitScreenSvg :rotated="smallSize && !isLandscape" />
-              </template>
-            </icon-button>
-          </div> -->
-
           <div class="top-buttons-row">
             <div class="justify-self-start">
               <v-btn
@@ -156,10 +102,18 @@
               >
                 About
               </v-btn>
+              <icon-button
+                v-if="(viewHasChanged || showSimulation) && showImageCard"
+                icon="mdi-home"
+                :color="buttonColor"
+                size="20"
+                tooltip-text="Reset to starting view"
+                @activate="() => resetView()"
+              />
             </div>
             <div class="justify-self-center">
               <DetailSummary
-                v-if="!(showSplashScreen || showCrawl) && (showSimulation || selectedGalleryItem) && isLandscape"
+                v-if="!(showSplashScreen || showCrawl) && (showSimulation || selectedGalleryItem) && viewportWidth > 400"
                 v-model="labelOpen"
                 :title="currentLabel.title"
                 :use-internal-dialog="false"
@@ -183,43 +137,32 @@
               >
                 View in 3D!
               </v-btn>
+              <icon-button
+                v-if="!showImageCard && !showSimulation"
+                :color="buttonColor"
+                tooltip-text="Show Simulation in Split Screen"
+                @activate="showImageCard = !showImageCard"
+              >
+                <template #button>
+                  <SplitScreenSvg :rotated="smallSize && !isLandscape" />
+                </template>
+              </icon-button>
             </div>
           </div>
           <div class="second-buttons-row">
             <div class="justify-self-start">
               <icon-button
-                v-if="viewHasChanged || showSimulation"
+                v-if="(viewHasChanged || showSimulation) && !showImageCard"
                 icon="mdi-home"
                 :color="buttonColor"
                 size="20"
                 tooltip-text="Reset to starting view"
                 @activate="() => resetView()"
               />
-              <!-- <icon-button
-                v-model="showInfoSheet"
-                icon="mdi-information-variant"
-                :color="buttonColor"
-                :tooltip-text="showInfoSheet ? 'Hide app info' : 'About this app'"
-                tooltip-location="start"
-              >
-              </icon-button> -->
-              <!-- <icon-button
-                v-if="!showImageCard"
-                icon="mdi-home"
-                :color="buttonColor"
-                tooltip-text="Reset view"
-                @activate="goToCoordinates('m74')"
-              /> -->
-              <!-- <icon-button
-                v-if="!showImageCard"
-                :icon="isWWT3D ? 'mdi-video-2d' : 'mdi-video-3d'"
-                :color="buttonColor"
-                @activate="isWWT3D = !isWWT3D"
-              /> -->
             </div>
             <div class="justify-self-center">
               <DetailSummary
-                v-if="!(showSplashScreen || showCrawl) && (showSimulation || selectedGalleryItem) && !isLandscape"
+                v-if="!(showSplashScreen || showCrawl) && (showSimulation || selectedGalleryItem) && viewportWidth <= 400"
                 v-model="labelOpen"
                 :title="currentLabel.title"
                 :use-internal-dialog="false"
@@ -235,7 +178,7 @@
             </div>
             <div class="justify-self-end">
               <icon-button
-                v-if="!showImageCard"
+                v-if="!showImageCard && showSimulation"
                 :color="buttonColor"
                 tooltip-text="Show Simulation in Split Screen"
                 @activate="showImageCard = !showImageCard"
@@ -255,7 +198,7 @@
         >
           <div class="merge-cube-shoutout ma-4">
             <h3>
-              Have a
+              Have a 
               <img
                 class="ml-1"
                 src="./assets/MergeCube-Logo-Purple.svg"
@@ -342,6 +285,7 @@
               show-opacity
               :columns="1"
               width="105px"
+              title="Choose"
               :persist="persistantImage"
               hide-persisted
               :collapse-on-select="true"
@@ -355,32 +299,22 @@
               v-if="!(showImageCard || showSimulation)"
               class="base-switch-button"
             >
-              <v-select
-                v-model="useIrBase"
-                label="Background"
-                :items="[
-                  { title: 'Optical (Kitt Peak)', value: false },
-                  { title: 'Infrared (Spitzer)', value: true },
-                ]"
-                variant="solo"
-                hide-details
-                density="compact"
-                class="v-select-base-switch"
+              <PlaceGallery
+                v-show="ready && !showSimulation && !showImageCard"
+                v-model:selected-places="backgroundPlace"
+                :places="galleryPlaces.filter(p => backgroundPlaceNames.includes(p.get_name()))"
+                :single-select="true"
+                selected-color="limegreen"
+                :columns="1"
+                width="105px"
+                item-height="67px"
+                title="Choose"
+                :collapse-on-select="true"
+                :disabled="showImageCard"
+                closed-text="Background"
+                :exclude-items="galleryPlaces.filter(p => !backgroundPlaceNames.includes(p.get_name())).map(p => p.get_name())"
               />
             </div>
-            <!-- <DetailSummary
-              v-if="!(showSplashScreen || showCrawl) && (showSimulation || selectedGalleryItem)"
-              v-model="labelOpen"
-              :title="currentLabel.title"
-              :use-internal-dialog="false"
-              @open="() => showInfoSheet = !showImageCard"
-            >
-              <ImageText
-                v-if="showSimulation || selectedGalleryItem"
-                show-image
-                :which="(showSimulation ? 'simulation' : selectedGalleryItem!.get_name()) as PhantomImageNames"
-              />
-            </DetailSummary> -->
           </div>
 
           <div
@@ -479,7 +413,6 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import { GotoRADecZoomParams, engineStore } from "@wwtelescope/engine-pinia";
 import { BackgroundImageset, supportsTouchscreen, useWWTKeyboardControls, useFullscreen } from "@cosmicds/vue-toolkit";
 import { useDisplay } from "vuetify";
@@ -494,7 +427,7 @@ import SplitScreenSvg from "./components/SplitScreenSvg.vue";
 import { WWTControl } from "@wwtelescope/engine";
 
 import Gallery from "./components/Gallery.vue";
-
+import PlaceGallery from "./components/PlaceGallery.vue";
 
 import SplashScreen from "./components/SplashScreen.vue";
 import InformationSheet from "./components/InformationSheet.vue";
@@ -517,23 +450,14 @@ export interface WwtPlaygroundProps {
 const fullscreen = useFullscreen();
 const searchParams = new URLSearchParams(window.location.search);
 const kiosk = searchParams.get("kiosk")?.toLowerCase() === "true";
-const toModel = searchParams.get("model")?.toLowerCase() === "true";
 if (kiosk) {
   document.body.classList.add("kiosk");
 }
-const skipCrawl = toModel || searchParams.get("crawl")?.toLowerCase() === "false";
-const skipSplash = toModel || searchParams.get("splash")?.toLowerCase() === "false";
+const skipScrawl = searchParams.get("crawl")?.toLowerCase() === "false";
+const skipSplash = searchParams.get("splash")?.toLowerCase() === "false";
 console.log("kiosk mode?", kiosk);
-console.log("skip crawl?", skipCrawl);
+console.log("skip crawl?", skipScrawl);
 console.log("skip splash?", skipSplash);
-console.log("to model?", toModel);
-
-if (toModel) {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("model");
-  window.history.replaceState({}, "", url);
-}
-
 const store = engineStore();
 
 useWWTKeyboardControls(store);
@@ -565,11 +489,11 @@ const showInfoSheet = ref(false);
 const aboutMode = ref(false);
 const showSplashScreen = ref(!skipSplash);
 const showCrawl = ref(false);
-if (skipSplash && !skipCrawl) {
+if (skipSplash && !skipScrawl) {
   showCrawl.value = true;
 }
 watch(showSplashScreen, (showing) => {
-  if (!showing && !skipCrawl) {
+  if (!showing && !skipScrawl) {
     showCrawl.value = true;
   }
 });
@@ -578,7 +502,7 @@ const positionSet = ref(false);
 const accentColor = ref("#d957db");
 const buttonColor = ref("#ffffff");
 
-const showModel = ref(toModel);
+const showModel = ref(false);
 
 const showImageCard = ref(false);
 const galleryOpen = ref(false);
@@ -658,12 +582,35 @@ const currentLabel = computed(() => {
 
 const showSimulation = ref(false);
 
+const backgroundPlaceNames = ['2023 Infrared (Spitzer)', 'Optical (Kitt Peak)'];
 const useIrBase = ref(false);
-const persistantImage = computed(() => { return useIrBase.value ? '2023 Infrared (Spitzer)' : 'Optical (Kitt Peak)';});
+const persistantImage = computed(() => { return useIrBase.value ? backgroundPlaceNames[0] : backgroundPlaceNames[1];});
 function switchBaseImage() {
   useIrBase.value = !useIrBase.value;
 }
 
+const backgroundPlace = computed<Place[]>({
+  get() {
+    const place = useIrBase.value 
+      ? galleryPlaces.value.find(p => p.get_name() === backgroundPlaceNames[0]) 
+      : galleryPlaces.value.find(p => p.get_name() === backgroundPlaceNames[1]);
+    console.log("Computed background place as", place?.get_name());
+    return place ? [place] : [];
+  },
+  set(newPlace) {
+    console.log("Setting background place to", newPlace.map(p => p.get_name()));
+    if (newPlace[0] == null) return;
+    const name = newPlace[0].get_name();
+    if (name === backgroundPlaceNames[0]) {
+      useIrBase.value = true;
+    } else if (name === backgroundPlaceNames[1]) {
+      useIrBase.value = false;
+    }
+  }
+});
+
+import { BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, WebGLRenderer } from "three";
+import { storeToRefs } from "pinia";
 
 function moveToImageset(imageset: Imageset, options: {instant?: boolean, roll?: boolean, extraRoll?: number} = {instant: true, roll: false,}) {
   const centerX = imageset.get_centerX(); // degrees
@@ -706,6 +653,7 @@ function goToCoordinates(item: keyof typeof coordinates, instant=true) {
     instant,
   });
 }
+
 
 import { useWtmlLoader } from "./composables/useWtmlLoader";
 
@@ -838,7 +786,6 @@ const viewHasChanged = computed(() => {
   const distance = Math.sqrt((currentRA - defaultRA) ** 2 + (currentDec - defaultDec) ** 2);
   const selectedItemIsDefault = selectedGalleryItem.value?.get_name() === "Infrared Stars & Dust (JWST)";
   const usingDefaultBase = useIrBase.value === false;
-  console.log("Checking if view has changed...", {distance, maxDistance, selectedItemIsDefault, usingDefaultBase});
   return distance > maxDistance || !selectedItemIsDefault || !usingDefaultBase;
 });
 
